@@ -27,7 +27,7 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-from app.schemas import FleetRecordOut, FleetSummary, DailySubtotal, DashboardStats, AnalyticsResponse
+from app.schemas import FleetRecordOut, FleetSummary, DailySubtotal, DashboardStats, AnalyticsResponse, Anomaly
 from app.models import FleetRecord, SystemSetting
 from app.database import SessionLocal
 
@@ -74,7 +74,6 @@ class DataProcessor:
     @staticmethod
     def detect_anomalies(df: pd.DataFrame) -> List[Anomaly]:
         """Detect unusual patterns in fleet data"""
-        from ..schemas import Anomaly
         anomalies = []
         
         if df.empty:
@@ -116,7 +115,6 @@ class DataProcessor:
     @staticmethod
     def process_analytics(records: List[FleetRecord]) -> AnalyticsResponse:
         """Process raw records into full analytics response"""
-        from ..schemas import AnalyticsResponse, DashboardStats, FleetSummary, DailySubtotal, FleetRecordOut
         
         if not records:
             return AnalyticsResponse(
