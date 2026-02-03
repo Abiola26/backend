@@ -42,6 +42,12 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8"
     }
 
+    def __init__(self, **values):
+        super().__init__(**values)
+        # Fix for Render/Heroku PostgreSQL URL format (postgres:// vs postgresql://)
+        if self.database_url and self.database_url.startswith("postgres://"):
+            self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
+
 
 @lru_cache()
 def get_settings() -> Settings:
