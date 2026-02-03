@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(api: FastAPI):
+async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info("Starting Fleet Reporting Backend...")
@@ -33,7 +33,7 @@ async def lifespan(api: FastAPI):
 
 
 # Create FastAPI application
-api = FastAPI(
+app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Fleet Reporting and Analytics System API",
@@ -41,10 +41,10 @@ api = FastAPI(
 )
 
 # Initialize Limiter
-init_limiter(api)
+init_limiter(app)
 
 # Add CORS middleware
-api.add_middleware(
+app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
@@ -52,7 +52,7 @@ api.add_middleware(
     allow_headers=["*"],
 )
 
-@api.middleware("http")
+@app.middleware("http")
 async def check_maintenance_mode(request, call_next):
     # 1. Skip check for critical infrastructure routes
     if request.url.path in ["/", "/health", "/auth/token", "/auth/signup", "/docs", "/openapi.json"]:
@@ -96,17 +96,17 @@ async def check_maintenance_mode(request, call_next):
     return await call_next(request)
 
 # Include routers
-api.include_router(auth_routes.router)
-api.include_router(fleet_routes.router)
-api.include_router(file_routes.router)
-api.include_router(analytics_routes.router)
-api.include_router(audit_routes.router)
-api.include_router(settings_routes.router)
-api.include_router(notification_routes.router)
+app.include_router(auth_routes.router)
+app.include_router(fleet_routes.router)
+app.include_router(file_routes.router)
+app.include_router(analytics_routes.router)
+app.include_router(audit_routes.router)
+app.include_router(settings_routes.router)
+app.include_router(notification_routes.router)
 
 
 
-@api.get("/", tags=["Root"])
+@app.get("/", tags=["Root"])
 def root():
     """Root endpoint"""
     return {
@@ -116,7 +116,7 @@ def root():
     }
 
 
-@api.get("/health", tags=["Health"])
+@app.get("/health", tags=["Health"])
 def health_check():
     """Health check endpoint for monitoring"""
     return {
@@ -124,7 +124,3 @@ def health_check():
         "service": settings.app_name,
         "version": settings.app_version
     }
-
-# WSGI Adapter for Gunicorn/Render default workers
-from a2wsgi import ASGIMiddleware
-app = ASGIMiddleware(api)
