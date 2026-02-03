@@ -13,3 +13,4 @@ openpyxl
 reportlab
 fastapi-mail
 gunicorn
+slowapi
