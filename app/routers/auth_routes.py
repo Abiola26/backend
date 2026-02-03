@@ -287,10 +287,11 @@ def password_reset_confirm(
     Confirm password reset with token
     """
     from jose import jwt, JWTError
-    from app.auth import SECRET_KEY, ALGORITHM
+    from app.config import get_settings
+    settings = get_settings()
     
     try:
-        payload = jwt.decode(confirm.token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(confirm.token, settings.secret_key, algorithms=[settings.algorithm])
         username: str = payload.get("sub")
         purpose: str = payload.get("purpose")
         
