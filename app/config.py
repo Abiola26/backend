@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     
-    # CORS
-    allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # CORS - can be a comma-separated string or list
+    allowed_origins: str | list[str] = "http://localhost:3000,http://localhost:5173"
     
     # Application
     app_name: str = "fras"
@@ -41,6 +41,13 @@ class Settings(BaseSettings):
         "case_sensitive": False,
         "env_file_encoding": "utf-8"
     }
+    
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parse allowed_origins into a list"""
+        if isinstance(self.allowed_origins, list):
+            return self.allowed_origins
+        return [origin.strip() for origin in self.allowed_origins.split(",")]
 
     def __init__(self, **values):
         super().__init__(**values)
