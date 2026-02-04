@@ -15,18 +15,33 @@ from app.utils.logging_config import setup_logging
 
 settings = get_settings()
 
-# Configure logging
+# Configure logging early
 setup_logging(debug=settings.debug)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
+
+# Log configuration status after logger is ready
+if settings.secret_key == "dev-secret-key-change-in-production-use-env-variable":
+    logger.warning("Using default SECRET_KEY! Set SECRET_KEY in .env for production!")
+
+if settings.database_url.startswith("sqlite"):
+    logger.info("Using SQLite database for development")
+else:
+    # Log database type without exposing credentials
+    db_type = settings.database_url.split(":")[0]
+    logger.info(f"Using {db_type} database")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
-    logger.info("Starting Fleet Reporting Backend...")
+    logger.info(f"--- Starting {settings.app_name} v{settings.app_version} ---")
+    
+    # Optional: Run migrations or create tables
+    # If using Alembic primarily, you might want to comment out create_all
     Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created/verified")
+    logger.info("Database connection established and tables verified")
+    
     yield
     # Shutdown
     logger.info("Shutting down Fleet Reporting Backend...")
@@ -61,6 +76,8 @@ async def check_maintenance_mode(request, call_next):
     # Check DB for maintenance mode
     from app.database import SessionLocal
     from app.models import SystemSetting, User
+    from jose import jwt
+    from fastapi.responses import JSONResponse
     
     db = SessionLocal()
     try:
@@ -85,7 +102,6 @@ async def check_maintenance_mode(request, call_next):
                     pass # Token invalid, proceed to block
             
             # 3. Block standard users
-            from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=503,
                 content={"detail": "System is currently undergoing maintenance. Please try again later."}

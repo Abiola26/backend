@@ -4,24 +4,30 @@ import subprocess
 from datetime import datetime
 from ..config import get_settings
 
+import logging
+import re
+
+logger = logging.getLogger("app.backup")
+
 def run_backup():
     settings = get_settings()
     db_url = settings.database_url
     
-    # Parse DB URL (postgresql://user:password@host:port/dbname)
-    # This is a bit brittle, a better way would be to have separate config vars
-    # but for now we'll parse the URL
-    try:
-        # Expected format: postgresql://postgres:postgres@localhost:5432/fleetdb
-        parts = db_url.replace("postgresql://", "").replace("@", ":").replace("/", ":").split(":")
-        user = parts[0]
-        password = parts[1]
-        host = parts[2]
-        port = parts[3]
-        dbname = parts[4]
-    except Exception as e:
-        print(f"Error parsing database URL: {e}")
+    # Robust parsing of DB URL using regex
+    # Format: postgresql://user:password@host:port/dbname
+    pattern = r"postgresql://(?P<user>[^:]+):(?P<password>[^@]+)@(?P<host>[^:]+):(?P<port>\d+)/(?P<dbname>.+)"
+    match = re.search(pattern, db_url)
+    
+    if not match:
+        logger.error(f"Failed to parse database URL. Ensure it matches 'postgresql://user:password@host:port/dbname'")
         return False
+
+    db_info = match.groupdict()
+    user = db_info['user']
+    password = db_info['password']
+    host = db_info['host']
+    port = db_info['port']
+    dbname = db_info['dbname']
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Use absolute path for backups directory
@@ -51,16 +57,16 @@ def run_backup():
         dbname
     ]
 
-    print(f"Starting backup of {dbname} to {backup_file}...")
+    logger.info(f"Starting backup of database '{dbname}' to {backup_file}...")
     try:
         result = subprocess.run(command, env=env, check=True, capture_output=True, text=True)
-        print(f"Backup completed successfully: {backup_file}")
+        logger.info(f"Backup completed successfully: {backup_file}")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Backup failed: {e.stderr}")
+        logger.error(f"Backup process failed: {e.stderr}")
         return False
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.exception(f"An unexpected error occurred during backup: {e}")
         return False
 
 if __name__ == "__main__":

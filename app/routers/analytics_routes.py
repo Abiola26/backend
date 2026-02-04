@@ -232,27 +232,27 @@ def download_excel_report(
     )
 
 
-# @router.get("/download/pdf")
-# def download_pdf_report(
-#     start_date: Optional[date] = None,
-#     end_date: Optional[date] = None,
-#     fleets: Optional[list[str]] = Query(None),
-#     db: Session = Depends(get_db),
-#     current_user: User = Depends(get_current_user)
-# ):
-#     """Download analytics report as PDF"""
-#     query = get_filtered_query(db, start_date, end_date, fleets)
-#     records = query.all()
-#     analytics = DataProcessor.process_analytics(records)
-#     
-#     pdf_file = ReportGenerator.generate_pdf(analytics)
-#     
-#     filename = f"Fleet_Report_{date.today()}.pdf"
-#     return StreamingResponse(
-#         pdf_file,
-#         media_type="application/pdf",
-#         headers={"Content-Disposition": f"attachment; filename={filename}"}
-#     )
+@router.get("/download/pdf")
+def download_pdf_report(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    fleets: Optional[list[str]] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Download analytics report as PDF"""
+    query = get_filtered_query(db, start_date, end_date, fleets)
+    records = query.all()
+    analytics = DataProcessor.process_analytics(records)
+    
+    pdf_file = ReportGenerator.generate_pdf(analytics)
+    
+    filename = f"Fleet_Report_{date.today()}.pdf"
+    return StreamingResponse(
+        pdf_file,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 @router.post("/email-report")

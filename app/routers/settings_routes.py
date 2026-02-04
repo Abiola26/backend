@@ -36,3 +36,31 @@ def update_setting(
     db.commit()
     db.refresh(db_setting)
     return db_setting
+
+@router.post("/maintenance/toggle")
+def toggle_maintenance_mode(
+    db: Session = Depends(get_db),
+    _ = Depends(admin_required)
+):
+    """Toggle system maintenance mode (Admin only)"""
+    db_setting = db.query(SystemSetting).filter(SystemSetting.key == "MAINTENANCE_MODE").first()
+    if not db_setting:
+        db_setting = SystemSetting(key="MAINTENANCE_MODE", value="true", description="System Maintenance Mode")
+        db.add(db_setting)
+    else:
+        db_setting.value = "false" if db_setting.value.lower() == "true" else "true"
+    
+    db.commit()
+    return {"maintenance_mode": db_setting.value}
+
+@router.post("/backup")
+def trigger_backup(
+    _ = Depends(admin_required)
+):
+    """Trigger a manual database backup (Admin only)"""
+    from app.utils.backup import run_backup
+    success = run_backup()
+    if success:
+        return {"status": "success", "message": "Backup created successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Backup failed. Check logs for details.")
