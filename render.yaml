@@ -16,8 +16,7 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
       - key: ALLOWED_ORIGINS
-        value: "https://your-frontend-domain.onrender.com"
-
+        value: "https://frontends-weld.vercel.app"
 databases:
   - name: fras-db
     databaseName: fleetdb
