@@ -43,6 +43,29 @@ async def lifespan(app: FastAPI):
         # Create tables if they don't exist
         Base.metadata.create_all(bind=engine)
         logger.info("Database connection established and tables verified")
+        
+        # Seed initial admin user if no users exist
+        from app.database import SessionLocal
+        from app.models import User
+        from app.crud import create_user
+        
+        db = SessionLocal()
+        try:
+            user_count = db.query(User).count()
+            if user_count == 0:
+                logger.info("No users found in database. Initializing default admin...")
+                # Create default admin: admin / admin123
+                # In a real production apps, these would come from secret environment variables
+                admin_user = create_user(db, username="admin", password="admin123", role="admin")
+                logger.warning("**************************************************")
+                logger.warning(f"DEFAULT ADMIN CREATED: {admin_user.username} / admin123")
+                logger.warning("CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION!")
+                logger.warning("**************************************************")
+            else:
+                logger.info(f"Database already initialized with {user_count} users")
+        finally:
+            db.close()
+            
     except Exception as e:
         logger.error(f"Could not verify database tables on startup: {e}")
         # We don't exit here to allow the app to start and potentially show health check info
