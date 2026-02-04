@@ -171,3 +171,12 @@ def health_check():
         "service": settings.app_name,
         "version": settings.app_version
     }
+
+
+@app.get("/debug/cors", tags=["Debug"])
+def debug_cors():
+    """Debug endpoint to check CORS configuration"""
+    return {
+        "cors_origins": settings.cors_origins,
+        "raw_allowed_origins": settings.allowed_origins
+    }
