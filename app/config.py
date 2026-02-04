@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     # Database - with fallback to SQLite for development
     database_url: str = "sqlite:///./fleet.db"
     
-    # Security - with default for development (CHANGE IN PRODUCTION!)
-    secret_key: str = "dev-secret-key-change-in-production-use-env-variable"
+    # Security
+    secret_key: str = "insecure-dev-key-fallback"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     

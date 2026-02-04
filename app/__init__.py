@@ -20,8 +20,10 @@ setup_logging(debug=settings.debug)
 logger = logging.getLogger("app")
 
 # Log configuration status after logger is ready
-if settings.secret_key == "dev-secret-key-change-in-production-use-env-variable":
-    logger.warning("Using default SECRET_KEY! Set SECRET_KEY in .env for production!")
+if settings.secret_key == "insecure-dev-key-fallback":
+    logger.warning("Using default SECRET_KEY! Set SECRET_KEY in environment for production!")
+else:
+    logger.info("Custom SECRET_KEY loaded")
 
 if settings.database_url.startswith("sqlite"):
     logger.info("Using SQLite database for development")
@@ -37,10 +39,13 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info(f"--- Starting {settings.app_name} v{settings.app_version} ---")
     
-    # Optional: Run migrations or create tables
-    # If using Alembic primarily, you might want to comment out create_all
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database connection established and tables verified")
+    try:
+        # Create tables if they don't exist
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database connection established and tables verified")
+    except Exception as e:
+        logger.error(f"Could not verify database tables on startup: {e}")
+        # We don't exit here to allow the app to start and potentially show health check info
     
     yield
     # Shutdown
@@ -79,8 +84,8 @@ async def check_maintenance_mode(request, call_next):
     from jose import jwt
     from fastapi.responses import JSONResponse
     
-    db = SessionLocal()
     try:
+        db = SessionLocal()
         maintenance = db.query(SystemSetting).filter(SystemSetting.key == "MAINTENANCE_MODE").first()
         if maintenance and maintenance.value.lower() == "true":
             # 2. Check if the user is an Admin (Admins can bypass maintenance)
@@ -88,8 +93,6 @@ async def check_maintenance_mode(request, call_next):
             if auth_header and auth_header.startswith("Bearer "):
                 token = auth_header.split(" ")[1]
                 try:
-                    from jose import jwt
-                    from app.config import get_settings
                     config = get_settings()
                     payload = jwt.decode(token, config.secret_key, algorithms=[config.algorithm])
                     username = payload.get("sub")
@@ -106,8 +109,13 @@ async def check_maintenance_mode(request, call_next):
                 status_code=503,
                 content={"detail": "System is currently undergoing maintenance. Please try again later."}
             )
+    except Exception as e:
+        # If DB is down during maintenance check, log it but let the request through 
+        # (or block if preferred, but letting through is safer for "Up" status)
+        logger.error(f"Maintenance check failed: {e}")
     finally:
-        db.close()
+        if 'db' in locals():
+            db.close()
         
     return await call_next(request)
 
