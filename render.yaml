@@ -16,7 +16,7 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
       - key: ALLOWED_ORIGINS
-        value: "https://frontends-weld.vercel.app"
+        value: "https://frontends-weld.vercel.app,http://localhost:5175,http://localhost:5173"
 databases:
   - name: fras-db
     databaseName: fleetdb

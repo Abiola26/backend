@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     
     # CORS - can be a comma-separated string or list
-    allowed_origins: str | list[str] = "http://localhost:3000,http://localhost:5173"
+    allowed_origins: str | list[str] = "http://localhost:3000,http://localhost:5173,http://localhost:5175"
     
     # Application
     app_name: str = "fras"
