@@ -95,15 +95,8 @@ app = FastAPI(
 # Initialize Limiter
 init_limiter(app)
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,  # Use the property that parses the string
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
+# 2. Maintenance Mode Middleware
 @app.middleware("http")
 async def check_maintenance_mode(request, call_next):
     # ALWAYS allow preflight requests
@@ -154,6 +147,15 @@ async def check_maintenance_mode(request, call_next):
             db.close()
         
     return await call_next(request)
+
+# 3. CORS Middleware (Added last to be the outermost)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include routers
 app.include_router(auth_routes.router)
