@@ -9,7 +9,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
-from app.routers import auth_routes, fleet_routes, file_routes, analytics_routes, audit_routes, settings_routes, notification_routes
+from app.routers import (
+    auth_routes,
+    fleet_routes,
+    file_routes,
+    analytics_routes,
+    audit_routes,
+    settings_routes,
+    notification_routes,
+)
 from app.utils.limiter import init_limiter
 from app.utils.logging_config import setup_logging
 
@@ -45,26 +53,23 @@ PUBLIC_PATH_PREFIXES = (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
-    # Startup
     logger.info(f"--- Starting {settings.app_name} v{settings.app_version} ---")
-    
+
     try:
         # Create tables if they don't exist
         Base.metadata.create_all(bind=engine)
         logger.info("Database connection established and tables verified")
-        
+
         # Seed initial admin user if no users exist
         from app.database import SessionLocal
         from app.models import User
         from app.crud import create_user
-        
+
         db = SessionLocal()
         try:
             user_count = db.query(User).count()
             if user_count == 0:
                 logger.info("No users found in database. Initializing default admin...")
-                # Create default admin: admin / admin123
-                # In a real production apps, these would come from secret environment variables
                 admin_user = create_user(db, username="admin", password="admin123", role="admin")
                 logger.warning("**************************************************")
                 logger.warning(f"DEFAULT ADMIN CREATED: {admin_user.username} / admin123")
@@ -74,13 +79,11 @@ async def lifespan(app: FastAPI):
                 logger.info(f"Database already initialized with {user_count} users")
         finally:
             db.close()
-            
+
     except Exception as e:
         logger.error(f"Could not verify database tables on startup: {e}")
-        # We don't exit here to allow the app to start and potentially show health check info
-    
+
     yield
-    # Shutdown
     logger.info("Shutting down Fleet Reporting Backend...")
 
 
@@ -89,7 +92,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Fleet Reporting and Analytics System API",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Initialize Limiter
@@ -99,25 +102,26 @@ init_limiter(app)
 # 2. Maintenance Mode Middleware
 @app.middleware("http")
 async def check_maintenance_mode(request, call_next):
-    # ALWAYS allow preflight requests
+    # Always allow preflight requests (needed for CORS)
     if request.method == "OPTIONS":
         return await call_next(request)
 
-    # 1. Skip check for critical infrastructure routes
+    # Skip check for root and public paths
     if request.url.path == "/" or any(request.url.path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
         return await call_next(request)
-        
-    # Check DB for maintenance mode
+
     from app.database import SessionLocal
     from app.models import SystemSetting, User
     from jose import jwt
     from fastapi.responses import JSONResponse
-    
+
+    db = None
     try:
         db = SessionLocal()
         maintenance = db.query(SystemSetting).filter(SystemSetting.key == "MAINTENANCE_MODE").first()
+
         if maintenance and maintenance.value.lower() == "true":
-            # 2. Check if the user is an Admin (Admins can bypass maintenance)
+            # Check if user is admin (admins bypass maintenance)
             auth_header = request.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
                 token = auth_header.split(" ")[1]
@@ -128,30 +132,28 @@ async def check_maintenance_mode(request, call_next):
                     if username:
                         user = db.query(User).filter(User.username == username).first()
                         if user and user.role == "admin":
-                            # Admin bypasses maintenance
                             return await call_next(request)
                 except Exception:
-                    pass # Token invalid, proceed to block
-            
-            # 3. Block standard users
+                    logger.warning("Invalid or expired token during maintenance bypass attempt")
+
+            # Block non-admin users
             return JSONResponse(
                 status_code=503,
-                content={"detail": "System is currently undergoing maintenance. Please try again later."}
+                content={"detail": "System is currently undergoing maintenance. Please try again later."},
             )
     except Exception as e:
-        # If DB is down during maintenance check, log it but let the request through 
-        # (or block if preferred, but letting through is safer for "Up" status)
         logger.error(f"Maintenance check failed: {e}")
     finally:
-        if 'db' in locals():
+        if db:
             db.close()
-        
+
     return await call_next(request)
 
-# 3. CORS Middleware (Added last to be the outermost)
+
+# 3. CORS Middleware (outermost layer)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.cors_origins or ["*"],  # fallback to allow all if not set
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -167,14 +169,13 @@ app.include_router(settings_routes.router)
 app.include_router(notification_routes.router)
 
 
-
 @app.get("/", tags=["Root"])
 def root():
     """Root endpoint"""
     return {
         "message": "Fleet Reporting Backend is running",
         "version": settings.app_version,
-        "status": "healthy"
+        "status": "healthy",
     }
 
 
@@ -184,7 +185,7 @@ def health_check():
     return {
         "status": "healthy",
         "service": settings.app_name,
-        "version": settings.app_version
+        "version": settings.app_version,
     }
 
 
@@ -193,5 +194,5 @@ def debug_cors():
     """Debug endpoint to check CORS configuration"""
     return {
         "cors_origins": settings.cors_origins,
-        "raw_allowed_origins": settings.allowed_origins
+        "raw_allowed_origins": settings.allowed_origins,
     }
