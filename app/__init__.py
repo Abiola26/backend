@@ -33,6 +33,15 @@ else:
     logger.info(f"Using {db_type} database")
 
 
+# Routes that bypass maintenance check
+PUBLIC_PATH_PREFIXES = (
+    "/auth",
+    "/docs",
+    "/openapi.json",
+    "/health",
+)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
@@ -97,8 +106,12 @@ app.add_middleware(
 
 @app.middleware("http")
 async def check_maintenance_mode(request, call_next):
+    # ALWAYS allow preflight requests
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     # 1. Skip check for critical infrastructure routes
-    if request.url.path in ["/", "/health", "/auth/token", "/auth/signup", "/docs", "/openapi.json"]:
+    if request.url.path == "/" or any(request.url.path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
         return await call_next(request)
         
     # Check DB for maintenance mode
