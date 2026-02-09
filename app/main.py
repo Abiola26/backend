@@ -2,7 +2,7 @@
 Main Application Factory
 Aggregates routers, middleware, and lifespan events.
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.routers import (
@@ -17,7 +17,6 @@ from app.routers import (
 from app.utils.limiter import init_limiter
 from app.utils.logging_config import setup_logging
 from app.lifespan import lifespan
-from app.middleware.maintenance import maintenance_middleware
 
 settings = get_settings()
 
@@ -38,13 +37,15 @@ def create_app() -> FastAPI:
     # 1. Initialize Rate Limiter
     init_limiter(app)
 
-    # 2. Register Custom Middlewares
-    # Note: Middlewares are executed in the order they are added (Starlette logic).
-    # 'http' generic middlewares added via @app.middleware are processed first.
-    app.middleware("http")(maintenance_middleware)
+    # 2. Register Middlewares
+    # Note: Middlewares are executed in REVERSE order of addition (LIFO).
+    # The last one added is the "outermost" layer.
     
-    # 3. Register Standard Middlewares
-    # CORSMiddleware is added last so it is the "outermost" layer.
+    # Inner: Maintenance logic
+    from app.middleware.maintenance import MaintenanceMiddleware
+    app.add_middleware(MaintenanceMiddleware)
+    
+    # Outer: CORS headers (must be outermost to catch exceptions from inner layers)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins or ["*"],
@@ -53,7 +54,28 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # 4. Include Domain Routers
+    # 4. Global Exception Handlers (Backup CORS for errors)
+    from fastapi import HTTPException
+    from fastapi.responses import JSONResponse
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        response = JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=exc.headers,
+        )
+        # Add CORS headers manually to error responses as a fallback
+        origin = request.headers.get("origin")
+        if origin and (origin in settings.cors_origins or "*" in settings.cors_origins):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        elif "*" in settings.cors_origins:
+             response.headers["Access-Control-Allow-Origin"] = "*"
+             
+        return response
+
+    # 5. Include Domain Routers
     app.include_router(auth_routes.router)
     app.include_router(fleet_routes.router)
     app.include_router(file_routes.router)
