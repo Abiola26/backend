@@ -1,6 +1,7 @@
 """
 Authentication routes
 """
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -245,6 +246,8 @@ def delete_user(
     db.delete(user)
     db.commit()
     return {"message": "User deleted successfully"}
+
+
 @router.post("/password-reset-request")
 @limiter.limit("3/minute")
 async def password_reset_request(
@@ -264,7 +267,8 @@ async def password_reset_request(
         
     # Generate a short-lived token (15 mins)
     reset_token = create_access_token(
-        data={"sub": user.username, "purpose": "password_reset"}
+        data={"sub": user.username, "purpose": "password_reset"},
+        expires_delta=timedelta(minutes=15),
     )
     
     # Send email in background
@@ -272,10 +276,7 @@ async def password_reset_request(
     
     crud.create_audit_log(db, user.id, user.username, "PASSWORD_RESET_REQUESTED")
     
-    return {
-        "message": "If an account exists for this email, a reset token has been sent.",
-        "token": reset_token  # Still returning for dev convenience
-    }
+    return {"message": "If an account exists for this email, a reset token has been sent."}
 
 
 @router.post("/password-reset-confirm")

@@ -3,15 +3,13 @@ File upload and processing routes
 """
 import logging
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import pandas as pd
 from io import BytesIO
-from datetime import datetime
 
 from app.database import get_db
 from app.dependencies import admin_required
-from app.models import FleetRecord, User, Notification
+from app.models import FleetRecord, User
 from app import crud
 
 router = APIRouter(prefix="/files", tags=["File Upload"])
@@ -45,7 +43,8 @@ async def upload_files(
     import_stats = {
         "files_processed": 0,
         "records_imported": 0,
-        "errors": []
+        "errors": [],
+        "row_errors": 0,
     }
 
     for file in files:
@@ -117,8 +116,10 @@ async def upload_files(
                 db.add(record)
                 file_records += 1
             except Exception as e:
-                # Log specific row errors but don't fail entire file
-                continue
+                import_stats["row_errors"] += 1
+                logger.warning(
+                    "Skipped row in %s due to error: %s", file.filename, e, exc_info=True
+                )
         
         import_stats["files_processed"] += 1
         import_stats["records_imported"] += file_records
@@ -156,5 +157,4 @@ async def upload_files(
         "message": "Upload processing complete",
         "stats": import_stats
     }
-
 
