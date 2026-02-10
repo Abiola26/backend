@@ -2,26 +2,29 @@
 Main Application Factory
 Aggregates routers, middleware, and lifespan events.
 """
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.config import get_settings
+from app.lifespan import lifespan
 from app.routers import (
-    auth_routes,
-    fleet_routes,
-    file_routes,
     analytics_routes,
     audit_routes,
-    settings_routes,
+    auth_routes,
+    file_routes,
+    fleet_routes,
     notification_routes,
+    settings_routes,
 )
 from app.utils.limiter import init_limiter
 from app.utils.logging_config import setup_logging
-from app.lifespan import lifespan
 
 settings = get_settings()
 
 # Initialize logging before app creation
 setup_logging(debug=settings.debug)
+
 
 def create_app() -> FastAPI:
     """
@@ -40,11 +43,12 @@ def create_app() -> FastAPI:
     # 2. Register Middlewares
     # Note: Middlewares are executed in REVERSE order of addition (LIFO).
     # The last one added is the "outermost" layer.
-    
+
     # Inner: Maintenance logic
     from app.middleware.maintenance import MaintenanceMiddleware
+
     app.add_middleware(MaintenanceMiddleware)
-    
+
     # Outer: CORS headers (must be outermost to catch exceptions from inner layers)
     app.add_middleware(
         CORSMiddleware,
@@ -71,8 +75,8 @@ def create_app() -> FastAPI:
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
         elif "*" in settings.cors_origins:
-             response.headers["Access-Control-Allow-Origin"] = "*"
-             
+            response.headers["Access-Control-Allow-Origin"] = "*"
+
         return response
 
     # 5. Include Domain Routers
@@ -112,6 +116,7 @@ def create_app() -> FastAPI:
         }
 
     return app
+
 
 # The exported 'app' instance used by the ASGI server (uvicorn/gunicorn)
 app = create_app()

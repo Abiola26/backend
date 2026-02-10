@@ -2,6 +2,7 @@
 Script to create database tables
 Run this to initialize the database schema
 """
+
 from app.database import engine
 from app.models import Base
 
@@ -11,4 +12,3 @@ try:
     print("SUCCESS: Database tables created successfully")
 except Exception as e:
     print(f"FAILURE: Error creating tables: {str(e)}")
-

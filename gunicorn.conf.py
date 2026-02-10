@@ -12,7 +12,7 @@ worker_class = "uvicorn.workers.UvicornWorker"
 workers = int(os.environ.get("GUNICORN_WORKERS", 2))
 # If GUNICORN_WORKERS is not set, use a small default instead of scaling with CPU
 if not os.environ.get("GUNICORN_WORKERS") and multiprocessing.cpu_count() > 1:
-    workers = min(multiprocessing.cpu_count(), 4) # Max 4 by default
+    workers = min(multiprocessing.cpu_count(), 4)  # Max 4 by default
 
 timeout = 120
 keepalive = 5

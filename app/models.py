@@ -1,14 +1,26 @@
 """
 Database models
 """
-from sqlalchemy import Column, Integer, String, Date, Float, DateTime, Boolean, ForeignKey
+
 from datetime import datetime
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+)
 
 from .database import Base
 
 
 class User(Base):
     """User model for authentication and authorization"""
+
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -24,6 +36,7 @@ class User(Base):
 
 class FleetRecord(Base):
     """Fleet record model for storing fleet data"""
+
     __tablename__ = "fleet_records"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -34,6 +47,7 @@ class FleetRecord(Base):
 
 class AuditLog(Base):
     """Audit Log model for tracking user actions"""
+
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -46,6 +60,7 @@ class AuditLog(Base):
 
 class SystemSetting(Base):
     """System settings for configurable business logic"""
+
     __tablename__ = "system_settings"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -53,14 +68,18 @@ class SystemSetting(Base):
     value = Column(String, nullable=False)
     description = Column(String, nullable=True)
 
+
 class Notification(Base):
     """Notification model for system alerts"""
+
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True) # If null, broadcast to all
+    user_id = Column(
+        Integer, ForeignKey("users.id"), index=True, nullable=True
+    )  # If null, broadcast to all
     title = Column(String, nullable=False)
     message = Column(String, nullable=False)
-    type = Column(String, default="info") # info, warning, success, error
+    type = Column(String, default="info")  # info, warning, success, error
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)

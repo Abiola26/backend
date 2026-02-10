@@ -16,7 +16,13 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
       - key: ALLOWED_ORIGINS
-        value: "https://frontend-psi-one-79.vercel.app,https://frontends-weld.vercel.app,http://localhost:5175,http://localhost:5173"
+        value: "*"
+      - key: MAIL_USERNAME
+        value: "noreply@example.com"
+      - key: MAIL_PASSWORD
+        value: "dummy"
+      - key: MAIL_FROM
+        value: "noreply@example.com"
 databases:
   - name: fras-db
     databaseName: fleetdb

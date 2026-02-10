@@ -1,16 +1,18 @@
 """
 File upload and processing routes
 """
+
 import logging
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-import pandas as pd
 from io import BytesIO
 
+import pandas as pd
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy.orm import Session
+
+from app import crud
 from app.database import get_db
 from app.dependencies import admin_required
 from app.models import FleetRecord, User
-from app import crud
 
 router = APIRouter(prefix="/files", tags=["File Upload"])
 logger = logging.getLogger(__name__)
@@ -30,18 +32,19 @@ COLUMN_MAPPING = {
     "fleet": "Fleet",
     "revenue": "Amount",
     "total": "Amount",
-    "amount": "Amount"
+    "amount": "Amount",
 }
+
 
 @router.post("/upload")
 async def upload_files(
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
-    _: User = Depends(admin_required)
+    _: User = Depends(admin_required),
 ):
     """
     Upload CSV or Excel files and process them
-    
+
     - Accepts multiple files
     - Validates columns
     - Imports data to database
@@ -49,10 +52,9 @@ async def upload_files(
     """
     if not files:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No files provided"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided"
         )
-    
+
     import_stats = {
         "files_processed": 0,
         "records_imported": 0,
@@ -62,13 +64,17 @@ async def upload_files(
 
     for file in files:
         # Validate file extension
-        file_ext = "." + (file.filename.lower().split('.')[-1] if '.' in file.filename else '')
+        file_ext = "." + (
+            file.filename.lower().split(".")[-1] if "." in file.filename else ""
+        )
         if file_ext not in ALLOWED_EXTENSIONS:
-            import_stats["errors"].append(f"{file.filename}: Invalid file type. Only CSV and XLSX are allowed.")
+            import_stats["errors"].append(
+                f"{file.filename}: Invalid file type. Only CSV and XLSX are allowed."
+            )
             continue
-        
+
         content = await file.read()
-        
+
         # Validate file size
         if len(content) > MAX_FILE_SIZE:
             import_stats["errors"].append(f"{file.filename}: Size exceeds limit (10MB)")
@@ -81,7 +87,9 @@ async def upload_files(
             else:
                 df = pd.read_excel(BytesIO(content))
         except Exception as e:
-            import_stats["errors"].append(f"{file.filename}: Error reading file: {str(e)}")
+            import_stats["errors"].append(
+                f"{file.filename}: Error reading file: {str(e)}"
+            )
             continue
 
         if df.empty:
@@ -94,23 +102,25 @@ async def upload_files(
         for alias, target in COLUMN_MAPPING.items():
             if alias in current_cols:
                 col_map[current_cols[alias]] = target
-        
+
         df = df.rename(columns=col_map)
 
         # Check for required columns
         missing_cols = REQUIRED_COLUMNS - set(df.columns)
         if missing_cols:
-            import_stats["errors"].append(f"{file.filename}: Missing required columns: {', '.join(missing_cols)}")
+            import_stats["errors"].append(
+                f"{file.filename}: Missing required columns: {', '.join(missing_cols)}"
+            )
             continue
 
         # Clean and normalize data
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
         df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
         df["Fleet"] = df["Fleet"].astype(str).str.strip().str.upper()
-        
+
         # Normalize specific fleet names
         df["Fleet"] = df["Fleet"].replace("2010M", "2010")
-        
+
         # Remove rows with invalid dates
         df = df.dropna(subset=["Date"])
 
@@ -119,38 +129,36 @@ async def upload_files(
         for _, row in df.iterrows():
             try:
                 record = FleetRecord(
-                    date=row["Date"],
-                    fleet=row["Fleet"],
-                    amount=row["Amount"]
+                    date=row["Date"], fleet=row["Fleet"], amount=row["Amount"]
                 )
                 db.add(record)
                 file_records += 1
             except Exception as e:
                 import_stats["row_errors"] += 1
-                logger.warning(
-                    "Skipped row in %s due to error: %s", file.filename, e, exc_info=True
-                )
-        
+                logger.warning("Skipped row in %s due to error: %s", file.filename, e)
+
         import_stats["files_processed"] += 1
         import_stats["records_imported"] += file_records
 
     if import_stats["files_processed"] == 0 and import_stats["errors"]:
-         raise HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Import failed: {import_stats['errors']}"
+            detail=f"Import failed: {import_stats['errors']}",
         )
 
     try:
         db.commit()
-        logger.info(f"Successfully imported {import_stats['records_imported']} fleet records")
+        logger.info(
+            f"Successfully imported {import_stats['records_imported']} fleet records"
+        )
     except Exception as e:
         db.rollback()
         logger.error(f"Database error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error saving records to database"
+            detail="Error saving records to database",
         )
-    
+
     # Notify admins about successful upload
     if import_stats["records_imported"] > 0:
         admins = db.query(User).filter(User.role == "admin").all()
@@ -161,13 +169,9 @@ async def upload_files(
                     title="Data Import Successful",
                     message=f"{import_stats['records_imported']} new records imported from {import_stats['files_processed']} file(s).",
                     type="info",
-                    user_id=admin.id
+                    user_id=admin.id,
                 )
             except Exception as e:
                 logger.error(f"Failed to create notification for admin {admin.id}: {e}")
 
-    return {
-        "message": "Upload processing complete",
-        "stats": import_stats
-    }
-
+    return {"message": "Upload processing complete", "stats": import_stats}
