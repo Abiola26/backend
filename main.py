@@ -2,6 +2,9 @@
 Fleet Reporting Backend - Main Application Entry Point
 """
 
+# Export the ASGI application instance for WSGI/ASGI servers (gunicorn, uvicorn)
+from app.main import app  # re-export the application
+
 if __name__ == "__main__":
     import uvicorn
 
