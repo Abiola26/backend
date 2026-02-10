@@ -3,9 +3,9 @@ Authentication and authorization utilities
 Handles JWT token creation, password hashing, and user authentication
 """
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-import logging
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer

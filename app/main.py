@@ -50,13 +50,27 @@ def create_app() -> FastAPI:
     app.add_middleware(MaintenanceMiddleware)
 
     # Outer: CORS headers (must be outermost to catch exceptions from inner layers)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins or ["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # Using a list of origins is better than "*" when allow_credentials=True
+    # If settings.cors_origins contains "*", we'll handle it via a dynamic approach or just allow all
+    origins = settings.cors_origins
+    if "*" in origins:
+        # FastAPI/Starlette doesn't allow "*" with allow_credentials=True
+        # We handle this by allowing all origins via regex or explicitly in our exception handler
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex="https?://.*",
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    else:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     # 4. Global Exception Handlers (Backup CORS for errors)
     from fastapi import HTTPException
