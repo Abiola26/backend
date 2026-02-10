@@ -1,20 +1,28 @@
+from typing import Optional
+
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 
 from app.config import get_settings
 
 settings = get_settings()
 
-conf = ConnectionConfig(
-    MAIL_USERNAME=settings.mail_username,
-    MAIL_PASSWORD=settings.mail_password,
-    MAIL_FROM=settings.mail_from,
-    MAIL_PORT=settings.mail_port,
-    MAIL_SERVER=settings.mail_server,
-    MAIL_STARTTLS=settings.mail_starttls,
-    MAIL_SSL_TLS=settings.mail_ssl_tls,
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True,
-)
+
+def _get_connection_config() -> Optional[ConnectionConfig]:
+    """Return a ConnectionConfig if mail settings are present, otherwise None."""
+    if not (settings.mail_username and settings.mail_password and settings.mail_from):
+        return None
+
+    return ConnectionConfig(
+        MAIL_USERNAME=settings.mail_username,
+        MAIL_PASSWORD=settings.mail_password,
+        MAIL_FROM=settings.mail_from,
+        MAIL_PORT=settings.mail_port,
+        MAIL_SERVER=settings.mail_server,
+        MAIL_STARTTLS=settings.mail_starttls,
+        MAIL_SSL_TLS=settings.mail_ssl_tls,
+        USE_CREDENTIALS=True,
+        VALIDATE_CERTS=True,
+    )
 
 
 async def send_password_reset_email(email_to: str, token: str):
@@ -40,6 +48,10 @@ async def send_password_reset_email(email_to: str, token: str):
         body=html,
         subtype=MessageType.html,
     )
+    conf = _get_connection_config()
+    if conf is None:
+        # Mail not configured (e.g., in test environment) — skip sending silently
+        return False
 
     fm = FastMail(conf)
     try:
