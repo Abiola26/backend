@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Email
-    mail_username: str | None = None
-    mail_password: str | None = None
-    mail_from: str | None = None
+    mail_username: str | None = "abdulmuheezabiola@gmail.com"
+    mail_password: str | None = "kose whsc yznu ewvx"
+    mail_from: str | None = "abdulmuheezalabi@gmail.com"
     mail_port: int = 587
     mail_server: str = "smtp.gmail.com"
     mail_starttls: bool = True

@@ -129,7 +129,9 @@ def create_app() -> FastAPI:
             elif origin and origin in settings.cors_origins:
                 headers["Access-Control-Allow-Origin"] = origin
                 headers["Access-Control-Allow-Credentials"] = "true"
-            headers["Access-Control-Allow-Methods"] = ", ".join(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+            headers["Access-Control-Allow-Methods"] = ", ".join(
+                ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+            )
             headers["Access-Control-Allow-Headers"] = "*"
             return Response(status_code=204, headers=headers)
 
