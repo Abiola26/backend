@@ -19,6 +19,19 @@ REQUIRED_COLUMNS = {"Date", "Fleet", "Amount"}
 ALLOWED_EXTENSIONS = {".csv", ".xlsx"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+# Map various possible column names to our required names
+COLUMN_MAPPING = {
+    "date": "Date",
+    "transaction date": "Date",
+    "transaction_date": "Date",
+    "bus": "Fleet",
+    "bus_code": "Fleet",
+    "bus code": "Fleet",
+    "fleet": "Fleet",
+    "revenue": "Amount",
+    "total": "Amount",
+    "amount": "Amount"
+}
 
 @router.post("/upload")
 async def upload_files(
@@ -49,49 +62,46 @@ async def upload_files(
 
     for file in files:
         # Validate file extension
-        file_ext = file.filename.lower().split('.')[-1] if '.' in file.filename else ''
-        if f".{file_ext}" not in ALLOWED_EXTENSIONS:
-            import_stats["errors"].append(f"{file.filename}: Invalid type")
+        file_ext = "." + (file.filename.lower().split('.')[-1] if '.' in file.filename else '')
+        if file_ext not in ALLOWED_EXTENSIONS:
+            import_stats["errors"].append(f"{file.filename}: Invalid file type. Only CSV and XLSX are allowed.")
             continue
         
         content = await file.read()
         
         # Validate file size
         if len(content) > MAX_FILE_SIZE:
-            import_stats["errors"].append(f"{file.filename}: Size exceeds limit")
+            import_stats["errors"].append(f"{file.filename}: Size exceeds limit (10MB)")
             continue
 
         try:
             # Read file based on extension
             if file.filename.lower().endswith(".csv"):
                 df = pd.read_csv(BytesIO(content))
-            elif file.filename.lower().endswith(".xlsx"):
-                df = pd.read_excel(BytesIO(content))
             else:
-                continue # Should not happen due to check above
+                df = pd.read_excel(BytesIO(content))
         except Exception as e:
-            logger.error(f"Error reading file {file.filename}: {str(e)}")
-            import_stats["errors"].append(f"{file.filename}: Read error - {str(e)}")
+            import_stats["errors"].append(f"{file.filename}: Error reading file: {str(e)}")
             continue
 
-        # Validate required columns
-        # Case insensitive check
-        df_cols = {c.lower() for c in df.columns}
-        req_cols_lower = {c.lower() for c in REQUIRED_COLUMNS}
-        
-        if not req_cols_lower.issubset(df_cols):
-            missing = req_cols_lower - df_cols
-            import_stats["errors"].append(f"{file.filename}: Missing columns {missing}")
+        if df.empty:
+            import_stats["errors"].append(f"{file.filename}: File is empty")
             continue
 
-        # Map columns to standard names
-        col_map = {c: c for c in df.columns} # Identity map fallback
-        for c in df.columns:
-            if c.lower() == "date": col_map[c] = "Date"
-            if c.lower() == "fleet": col_map[c] = "Fleet"
-            if c.lower() == "amount": col_map[c] = "Amount"
+        # Normalize column names
+        current_cols = {str(c).lower().strip(): c for c in df.columns}
+        col_map = {}
+        for alias, target in COLUMN_MAPPING.items():
+            if alias in current_cols:
+                col_map[current_cols[alias]] = target
         
         df = df.rename(columns=col_map)
+
+        # Check for required columns
+        missing_cols = REQUIRED_COLUMNS - set(df.columns)
+        if missing_cols:
+            import_stats["errors"].append(f"{file.filename}: Missing required columns: {', '.join(missing_cols)}")
+            continue
 
         # Clean and normalize data
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
@@ -124,6 +134,12 @@ async def upload_files(
         import_stats["files_processed"] += 1
         import_stats["records_imported"] += file_records
 
+    if import_stats["files_processed"] == 0 and import_stats["errors"]:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Import failed: {import_stats['errors']}"
+        )
+
     try:
         db.commit()
         logger.info(f"Successfully imported {import_stats['records_imported']} fleet records")
@@ -135,23 +151,20 @@ async def upload_files(
             detail="Error saving records to database"
         )
     
-    if import_stats["files_processed"] == 0 and import_stats["errors"]:
-         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Import failed: {import_stats['errors']}"
-        )
-
     # Notify admins about successful upload
     if import_stats["records_imported"] > 0:
         admins = db.query(User).filter(User.role == "admin").all()
         for admin in admins:
-            crud.create_notification(
-                db,
-                title="Data Import Successful",
-                message=f"{import_stats['records_imported']} new records imported from {import_stats['files_processed']} file(s).",
-                type="info",
-                user_id=admin.id
-            )
+            try:
+                crud.create_notification(
+                    db,
+                    title="Data Import Successful",
+                    message=f"{import_stats['records_imported']} new records imported from {import_stats['files_processed']} file(s).",
+                    type="info",
+                    user_id=admin.id
+                )
+            except Exception as e:
+                logger.error(f"Failed to create notification for admin {admin.id}: {e}")
 
     return {
         "message": "Upload processing complete",
