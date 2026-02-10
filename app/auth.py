@@ -20,6 +20,9 @@ from app.models import User
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
+# Silence passlib warning for bcrypt version compatibility
+logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
+
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
