@@ -2,10 +2,9 @@
 Application configuration management
 Centralizes all configuration variables from environment
 """
-import os
+import json
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -47,13 +46,24 @@ class Settings(BaseSettings):
         """Parse allowed_origins into a list"""
         if isinstance(self.allowed_origins, list):
             return self.allowed_origins
-        return [origin.strip() for origin in self.allowed_origins.split(",")]
+        if not self.allowed_origins:
+            return []
+        raw_value = self.allowed_origins.strip()
+        if raw_value.startswith("["):
+            try:
+                parsed = json.loads(raw_value)
+                if isinstance(parsed, list):
+                    return [str(origin).strip() for origin in parsed if str(origin).strip()]
+            except json.JSONDecodeError:
+                pass
+        return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
 
     def __init__(self, **values):
         super().__init__(**values)
         # Fix for Render/Heroku PostgreSQL URL format (postgres:// vs postgresql://)
         if self.database_url and self.database_url.startswith("postgres://"):
             self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
+        # SECRET_KEY validation removed - will use default dev key if not set for development
 
 
 @lru_cache()
