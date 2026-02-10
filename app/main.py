@@ -36,29 +36,15 @@ def create_app() -> FastAPI:
         description="Fleet Reporting and Analytics System API",
         lifespan=lifespan,
     )
-
-    # 1. Initialize Rate Limiter
-    init_limiter(app)
-
-    # 2. Register Middlewares
-    # Note: Middlewares are executed in REVERSE order of addition (LIFO).
-    # The last one added is the "outermost" layer.
-
-    # Inner: Maintenance logic
-    from app.middleware.maintenance import MaintenanceMiddleware
-
-    app.add_middleware(MaintenanceMiddleware)
-
-    # Outer: CORS headers (must be outermost to catch exceptions from inner layers)
-    # Using a list of origins is better than "*" when allow_credentials=True
-    # If settings.cors_origins contains "*", we'll handle it via a dynamic approach or just allow all
+    # 1. Register CORS middleware early so it always runs before other middlewares
+    # This ensures preflight and error responses include CORS headers even if
+    # other middlewares raise exceptions.
     origins = settings.cors_origins
     if "*" in origins:
-        # FastAPI/Starlette doesn't allow "*" with allow_credentials=True
-        # We handle this by allowing all origins via regex or explicitly in our exception handler
+        # Use a permissive regex when a wildcard is requested (keeps allow_credentials)
         app.add_middleware(
             CORSMiddleware,
-            allow_origin_regex="https?://.*",
+            allow_origin_regex=r"https?://.*",
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
@@ -71,6 +57,16 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+    # 2. Initialize Rate Limiter
+    init_limiter(app)
+
+    # 3. Register other middlewares (maintenance, etc.)
+    # Note: Middlewares are executed in REVERSE order of addition (LIFO).
+    # The last one added is the "outermost" layer.
+    from app.middleware.maintenance import MaintenanceMiddleware
+
+    app.add_middleware(MaintenanceMiddleware)
 
     # 4. Global Exception Handlers (Backup CORS for errors)
     from fastapi import HTTPException
