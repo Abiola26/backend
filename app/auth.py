@@ -85,7 +85,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
         )
 
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    secret = settings.secret_key or "insecure-dev-key-fallback"
+    return jwt.encode(to_encode, secret, algorithm=settings.algorithm)
 
 
 def get_current_user(
@@ -111,9 +112,8 @@ def get_current_user(
     )
 
     try:
-        payload = jwt.decode(
-            token, settings.secret_key, algorithms=[settings.algorithm]
-        )
+        secret = settings.secret_key or "insecure-dev-key-fallback"
+        payload = jwt.decode(token, secret, algorithms=[settings.algorithm])
         username: str = payload.get("sub")
         if username is None:
             print("DEBUG: Token missing 'sub' claim")
