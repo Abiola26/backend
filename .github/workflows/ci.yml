@@ -19,7 +19,7 @@ jobs:
           .venv/bin/python -m pip install -r requirements.txt -r requirements-dev.txt
       - name: Lint (ruff/black/isort)
         run: |
-          .venv/bin/ruff .
+          .venv/bin/ruff check .
           .venv/bin/isort --check-only .
           .venv/bin/black --check .
       - name: Run tests
