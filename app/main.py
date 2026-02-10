@@ -81,7 +81,12 @@ def create_app() -> FastAPI:
         )
         # Add CORS headers manually to error responses as a fallback
         origin = request.headers.get("origin")
-        if origin and (origin in settings.cors_origins or "*" in settings.cors_origins):
+        # If explicitly allowed, echo origin. Also support an opt-in env flag
+        if origin and (
+            origin in settings.cors_origins
+            or "*" in settings.cors_origins
+            or getattr(settings, "cors_allow_all_request_origins", False)
+        ):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
         elif "*" in settings.cors_origins:
@@ -147,9 +152,13 @@ def create_app() -> FastAPI:
 
         response = await call_next(request)
         origin = request.headers.get("origin")
+        # Fallback: echo the Origin if allowed or if the opt-in flag is set.
         if "*" in settings.cors_origins:
             response.headers["Access-Control-Allow-Origin"] = "*"
-        elif origin and origin in settings.cors_origins:
+        elif origin and (
+            origin in settings.cors_origins
+            or getattr(settings, "cors_allow_all_request_origins", False)
+        ):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
         return response

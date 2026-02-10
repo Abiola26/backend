@@ -25,6 +25,8 @@ class Settings(BaseSettings):
         "http://localhost:3000,http://localhost:5173,http://localhost:5175,https://frontend-psi-one-79.vercel.app"
     )
 
+    # When true, echo the request Origin header on all responses (opt-in, use with caution)
+    cors_allow_all_request_origins: bool = False
     # Application
     app_name: str = "fras"
     app_version: str = "1.0.0"
