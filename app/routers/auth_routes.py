@@ -1,12 +1,15 @@
-"""
-Authentication routes
-"""
-
 from datetime import timedelta
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Form,
+    HTTPException,
+    Request,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app import crud
@@ -34,11 +37,30 @@ from app.utils.limiter import limiter
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+class SimpleOAuth2PasswordRequestForm:
+    """
+    Simplified OAuth2 request form that only shows username and password in Swagger.
+    Client ID and Secret are not required for this application.
+    """
+
+    def __init__(
+        self,
+        username: str = Form(...),
+        password: str = Form(...),
+        scope: str = Form(""),
+        grant_type: Optional[str] = Form(None),
+    ):
+        self.username = username
+        self.password = password
+        self.scopes = scope.split()
+        self.grant_type = grant_type
+
+
 @router.post("/token", response_model=Token)
 @limiter.limit("10/minute")
 async def login(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    form_data: SimpleOAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
     """
