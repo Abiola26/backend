@@ -2,8 +2,9 @@
 Script to create an admin user
 Run this to create the initial admin account
 """
-from app.database import SessionLocal
+
 from app.crud import create_user
+from app.database import SessionLocal
 from app.models import User
 
 db = SessionLocal()
@@ -27,4 +28,3 @@ except Exception as e:
     db.rollback()
 finally:
     db.close()
-

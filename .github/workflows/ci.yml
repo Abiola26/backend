@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint (ruff/black/isort)
+        run: |
+          .venv/bin/ruff .
+          .venv/bin/isort --check-only .
+          .venv/bin/black --check .
+      - name: Run tests
+        run: .venv/bin/python -m pytest tests -q

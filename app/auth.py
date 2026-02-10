@@ -2,6 +2,7 @@
 Authentication and authorization utilities
 Handles JWT token creation, password hashing, and user authentication
 """
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -42,18 +43,18 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     user = db.query(User).filter(User.username == username).first()
     if not user:
         return None
-        
+
     if user.is_locked:
         # Check if we should unlock? For now, manual unlock by admin
-        return user # Return the user object but handle the lock status in the route
-        
+        return user  # Return the user object but handle the lock status in the route
+
     if not verify_password(password, user.hashed_password):
         user.failed_login_attempts += 1
         if user.failed_login_attempts >= 5:
             user.is_locked = True
         db.commit()
         return None
-        
+
     # Reset attempts on success
     user.failed_login_attempts = 0
     user.last_login = datetime.now()
@@ -64,36 +65,40 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     Create a JWT access token
-    
+
     Args:
         data: Payload data to encode in the token
         expires_delta: Optional custom expiration time
-        
+
     Returns:
         Encoded JWT token string
     """
     to_encode = data.copy()
-    
+
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
-    
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.access_token_expire_minutes
+        )
+
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> User:
     """
     Dependency to get the current authenticated user from JWT token
-    
+
     Args:
         token: JWT token from Authorization header
         db: Database session
-        
+
     Returns:
         Current authenticated User object
-        
+
     Raises:
         HTTPException: If token is invalid or user not found
     """
@@ -102,12 +107,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
         username: str = payload.get("sub")
         if username is None:
-            print(f"DEBUG: Token missing 'sub' claim")
+            print("DEBUG: Token missing 'sub' claim")
             raise credentials_exception
     except JWTError as e:
         print(f"DEBUG: JWT Decode Error: {e}")
@@ -117,6 +124,5 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if not user:
         print(f"DEBUG: User not found for username: {username}")
         raise credentials_exception
-    
-    return user
 
+    return user

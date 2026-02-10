@@ -1,31 +1,35 @@
 """
 Database configuration and session management
 """
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+
 from typing import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import get_settings
 
 settings = get_settings()
 
-# Create database engine with connection pooling
-# Note: Lowered pool sizes for compatibility with free-tier Postgres limits
-engine = create_engine(
-    settings.database_url,
-    pool_pre_ping=True,  # Verify connections before using
-    pool_size=3,         # Reduced from 5
-    max_overflow=2,      # Reduced from 10
-    pool_recycle=300,    # Close connections after 5 mins to prevent stale links
-    echo=settings.debug  # Log SQL queries in debug mode
-)
+database_url = make_url(settings.database_url)
+engine_options = {"echo": settings.debug}
+if database_url.get_backend_name() == "sqlite":
+    engine_options["connect_args"] = {"check_same_thread": False}
+else:
+    engine_options.update(
+        {
+            "pool_pre_ping": True,
+            "pool_size": 3,
+            "max_overflow": 2,
+            "pool_recycle": 300,
+        }
+    )
+
+engine = create_engine(settings.database_url, **engine_options)
 
 # Session factory
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for declarative models
 Base = declarative_base()

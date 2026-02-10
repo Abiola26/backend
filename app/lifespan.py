@@ -1,13 +1,16 @@
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+
 from app.config import get_settings
-from app.database import Base, engine, SessionLocal
-from app.models import User
 from app.crud import create_user
+from app.database import Base, SessionLocal, engine
+from app.models import User
 
 logger = logging.getLogger("app")
 settings = get_settings()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,7 +22,9 @@ async def lifespan(app: FastAPI):
 
     # Log configuration status
     if settings.secret_key == "insecure-dev-key-fallback":
-        logger.warning("Using default SECRET_KEY! Set SECRET_KEY in environment for production!")
+        logger.warning(
+            "Using default SECRET_KEY! Set SECRET_KEY in environment for production!"
+        )
     else:
         logger.info("Custom SECRET_KEY loaded")
 
@@ -34,27 +39,31 @@ async def lifespan(app: FastAPI):
         # Note: In production, migrations (Alembic) are preferred
         Base.metadata.create_all(bind=engine)
         logger.info("Database connection established and tables verified")
-        
-        # Seed initial admin user if no users exist
+
+        # Ensure default admin user exists
         db = SessionLocal()
         try:
-            user_count = db.query(User).count()
-            if user_count == 0:
-                logger.info("No users found in database. Initializing default admin...")
+            admin_user = db.query(User).filter(User.username == "admin").first()
+            if not admin_user:
+                logger.info("Admin user not found. Initializing default admin...")
                 # Create default admin: admin / admin123
-                admin_user = create_user(db, username="admin", password="admin123", role="admin")
+                admin_user = create_user(
+                    db, username="admin", password="admin123", role="admin"
+                )
                 logger.warning("**************************************************")
-                logger.warning(f"DEFAULT ADMIN CREATED: {admin_user.username} / admin123")
+                logger.warning(
+                    f"DEFAULT ADMIN CREATED: {admin_user.username} / admin123"
+                )
                 logger.warning("CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION!")
                 logger.warning("**************************************************")
             else:
-                logger.debug(f"Database contains {user_count} users")
+                logger.info("Admin user already exists")
         finally:
             db.close()
-            
+
     except Exception as e:
         logger.error(f"Could not verify database tables on startup: {e}")
-    
+
     yield
-    
+
     logger.info("Shutting down Fleet Reporting Backend...")

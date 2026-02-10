@@ -1,0 +1,8 @@
+# Development dependencies
+pytest
+httpx
+pytest-cov
+black
+isort
+ruff
+pre-commit

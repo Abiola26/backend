@@ -1,4 +1,26 @@
 # Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.db
+.pytest_cache/
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+
+# Logs
+*.log
+
+# Distribution
+dist/
+build/
+# Python
 __pycache__/
 *.py[cod]
 *$py.class

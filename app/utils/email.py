@@ -1,7 +1,6 @@
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
-from pydantic import EmailStr
+
 from app.config import get_settings
-from pathlib import Path
 
 settings = get_settings()
 
@@ -14,8 +13,9 @@ conf = ConnectionConfig(
     MAIL_STARTTLS=settings.mail_starttls,
     MAIL_SSL_TLS=settings.mail_ssl_tls,
     USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True
+    VALIDATE_CERTS=True,
 )
+
 
 async def send_password_reset_email(email_to: str, token: str):
     """
@@ -23,7 +23,7 @@ async def send_password_reset_email(email_to: str, token: str):
     """
     # In a real app, you'd probably link to a frontend URL
     # For now, we provide the token that can be used in the reset form
-    
+
     html = f"""
     <p>Hi,</p>
     <p>You requested a password reset for your FRAS account.</p>
@@ -38,7 +38,7 @@ async def send_password_reset_email(email_to: str, token: str):
         subject="FRAS - Password Reset Request",
         recipients=[email_to],
         body=html,
-        subtype=MessageType.html
+        subtype=MessageType.html,
     )
 
     fm = FastMail(conf)
