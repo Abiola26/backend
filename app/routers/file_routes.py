@@ -128,7 +128,7 @@ async def upload_files(
             except Exception as e:
                 import_stats["row_errors"] += 1
                 logger.warning(
-                    "Skipped row in %s due to error: %s", file.filename, e
+                    "Skipped row in %s due to error: %s", file.filename, e, exc_info=True
                 )
         
         import_stats["files_processed"] += 1
@@ -170,3 +170,4 @@ async def upload_files(
         "message": "Upload processing complete",
         "stats": import_stats
     }
+

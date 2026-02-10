@@ -2,10 +2,8 @@
 Application configuration management
 Centralizes all configuration variables from environment
 """
-import os
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -15,7 +13,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./fleet.db"
     
     # Security
-    secret_key: str = "insecure-dev-key-fallback"
+    secret_key: str | None = None
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     
@@ -28,9 +26,9 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Email
-    mail_username: str = "user@example.com"
-    mail_password: str = "password"
-    mail_from: str = "user@example.com"
+    mail_username: str | None = None
+    mail_password: str | None = None
+    mail_from: str | None = None
     mail_port: int = 587
     mail_server: str = "smtp.gmail.com"
     mail_starttls: bool = True
@@ -54,6 +52,10 @@ class Settings(BaseSettings):
         # Fix for Render/Heroku PostgreSQL URL format (postgres:// vs postgresql://)
         if self.database_url and self.database_url.startswith("postgres://"):
             self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
+        if not self.secret_key:
+            raise ValueError("SECRET_KEY must be set via environment variable.")
+        if not self.mail_username or not self.mail_password or not self.mail_from:
+            raise ValueError("Mail credentials (MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM) must be set.")
 
 
 @lru_cache()

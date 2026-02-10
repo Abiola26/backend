@@ -1,9 +1,7 @@
 """
 Database models
 """
-from sqlalchemy import Column, Integer, String, Date, Float, DateTime, Boolean
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Date, Float, DateTime, Boolean, ForeignKey
 from datetime import datetime
 
 from .database import Base
@@ -39,7 +37,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     username = Column(String, nullable=True)
     action = Column(String, nullable=False)
     details = Column(String, nullable=True)
@@ -60,7 +58,7 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True, nullable=True) # If null, broadcast to all
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True) # If null, broadcast to all
     title = Column(String, nullable=False)
     message = Column(String, nullable=False)
     type = Column(String, default="info") # info, warning, success, error
