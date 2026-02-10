@@ -115,6 +115,33 @@ def create_app() -> FastAPI:
             "raw_allowed_origins": settings.allowed_origins,
         }
 
+    # Fallback HTTP middleware to ensure CORS headers are always present
+    @app.middleware("http")
+    async def ensure_cors_headers(request: Request, call_next):
+        # Let CORSMiddleware handle most cases; this is a fallback for proxies/errors
+        if request.method == "OPTIONS":
+            from fastapi.responses import Response
+
+            origin = request.headers.get("origin")
+            headers = {}
+            if "*" in settings.cors_origins:
+                headers["Access-Control-Allow-Origin"] = "*"
+            elif origin and origin in settings.cors_origins:
+                headers["Access-Control-Allow-Origin"] = origin
+                headers["Access-Control-Allow-Credentials"] = "true"
+            headers["Access-Control-Allow-Methods"] = ", ".join(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+            headers["Access-Control-Allow-Headers"] = "*"
+            return Response(status_code=204, headers=headers)
+
+        response = await call_next(request)
+        origin = request.headers.get("origin")
+        if "*" in settings.cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        elif origin and origin in settings.cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+
     return app
 
 
