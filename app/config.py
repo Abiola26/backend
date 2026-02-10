@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./fleet.db"
 
     # Security
-    secret_key: str | None = None
+    secret_key: str = "dev-secret-key-change-in-production-please-use-env-variable"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 

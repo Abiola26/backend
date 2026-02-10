@@ -18,11 +18,15 @@ services:
       - key: ALLOWED_ORIGINS
         value: "*"
       - key: MAIL_USERNAME
-        value: "noreply@example.com"
+        value: "abdulmuheezabiola@gmail.com"
       - key: MAIL_PASSWORD
-        value: "dummy"
+        value: "kose whsc yznu ewvx"
       - key: MAIL_FROM
-        value: "noreply@example.com"
+        value: "abdulmuheezalabi@gmail.com"
+      - key: MAIL_SERVER
+        value: "smtp.gmail.com"
+      - key: MAIL_PORT
+        value: "587"
 databases:
   - name: fras-db
     databaseName: fleetdb
