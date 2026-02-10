@@ -5,6 +5,7 @@ Handles JWT token creation, password hashing, and user authentication
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import logging
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -17,6 +18,7 @@ from app.database import get_db
 from app.models import User
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -57,7 +59,7 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
 
     # Reset attempts on success
     user.failed_login_attempts = 0
-    user.last_login = datetime.now()
+    user.last_login = datetime.now(timezone.utc)
     db.commit()
     return user
 
@@ -117,12 +119,12 @@ def get_current_user(
             print("DEBUG: Token missing 'sub' claim")
             raise credentials_exception
     except JWTError as e:
-        print(f"DEBUG: JWT Decode Error: {e}")
+        logger.warning("JWT decode error: %s", e)
         raise credentials_exception
 
     user = db.query(User).filter(User.username == username).first()
     if not user:
-        print(f"DEBUG: User not found for username: {username}")
+        logger.warning("User not found for username: %s", username)
         raise credentials_exception
 
     return user

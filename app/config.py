@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./fleet.db"
 
     # Security
-    secret_key: str = "insecure-dev-key-fallback"
+    secret_key: str | None = None
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Email
-    mail_username: str = "user@example.com"
-    mail_password: str = "password"
-    mail_from: str = "user@example.com"
+    mail_username: str | None = None
+    mail_password: str | None = None
+    mail_from: str | None = None
     mail_port: int = 587
     mail_server: str = "smtp.gmail.com"
     mail_starttls: bool = True
