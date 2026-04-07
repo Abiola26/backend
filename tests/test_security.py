@@ -6,7 +6,6 @@ def test_unauthorized_access(client):
     response = client.get("/analytics/summary")
     assert response.status_code == 401
 
-
 def test_admin_only_route_as_user(client):
     # Create a regular user
     client.post(

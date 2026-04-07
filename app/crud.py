@@ -1,23 +1,20 @@
 """
 CRUD operations for database models
 """
-
 from datetime import date
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from .auth import get_password_hash
-from .models import AuditLog, FleetRecord, User
+from .auth import get_password_hash, verify_password
+from .models import AuditLog, FleetRecord, Notification, User
 from .schemas import FleetRecordBase
 from .utils import generate_account_id
 
 
-def create_user(
-    db: Session, username: str, password: str, role: str = "user", email: str = None
-) -> User:
+def create_user(db: Session, username: str, password: str, role: str = "user", email: str = None) -> User:
     """
-    Create a new user in the database
+    Create a new user in the database.
 
     Args:
         db: Database session
@@ -42,24 +39,9 @@ def create_user(
     return user
 
 
-def get_user(db: Session, user_id: int) -> Optional[User]:
-    """Get a user by ID"""
-    return db.query(User).filter(User.id == user_id).first()
-
-
-def get_user_by_username(db: Session, username: str) -> Optional[User]:
-    """Get a user by username"""
-    return db.query(User).filter(User.username == username).first()
-
-
-def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[User]:
-    """Get all users with pagination"""
-    return db.query(User).offset(skip).limit(limit).all()
-
-
 def create_fleet_record(db: Session, data: FleetRecordBase) -> FleetRecord:
     """
-    Create a new fleet record
+    Create a new fleet record.
 
     Args:
         db: Database session
@@ -77,7 +59,7 @@ def create_fleet_record(db: Session, data: FleetRecordBase) -> FleetRecord:
 
 def get_fleet_records(db: Session, skip: int = 0, limit: int = 50) -> list[FleetRecord]:
     """
-    Get fleet records with pagination
+    Get fleet records with pagination.
 
     Args:
         db: Database session
@@ -92,7 +74,7 @@ def get_fleet_records(db: Session, skip: int = 0, limit: int = 50) -> list[Fleet
 
 def delete_record(db: Session, record_id: int) -> Optional[FleetRecord]:
     """
-    Delete a fleet record by ID
+    Delete a fleet record by ID.
 
     Args:
         db: Database session
@@ -114,9 +96,7 @@ def delete_records_batch(
     end_date: Optional[date] = None,
     fleet: Optional[str] = None,
 ) -> int:
-    """
-    Delete fleet records making the specific filters
-    """
+    """Delete fleet records matching the specified filters."""
     query = db.query(FleetRecord)
     if start_date:
         query = query.filter(FleetRecord.date >= start_date)
@@ -130,12 +110,8 @@ def delete_records_batch(
     return deleted_count
 
 
-def create_audit_log(
-    db: Session, user_id: int, username: str, action: str, details: str = None
-):
-    """
-    Create an audit log entry
-    """
+def create_audit_log(db: Session, user_id: int, username: str, action: str, details: str = None) -> AuditLog:
+    """Create an audit log entry."""
     log = AuditLog(user_id=user_id, username=username, action=action, details=details)
     db.add(log)
     db.commit()
@@ -144,12 +120,8 @@ def create_audit_log(
 
 def create_notification(
     db: Session, title: str, message: str, type: str = "info", user_id: int = None
-):
-    """
-    Create a system notification
-    """
-    from .models import Notification
-
+) -> Notification:
+    """Create a system notification."""
     notif = Notification(user_id=user_id, title=title, message=message, type=type)
     db.add(notif)
     db.commit()

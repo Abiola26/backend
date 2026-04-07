@@ -1,31 +1,27 @@
 """
 Pydantic schemas for request/response validation
 """
-
 from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserCreate(BaseModel):
-    """Schema for creating a new user"""
-
+    """Schema for creating a new user."""
     username: str = Field(..., min_length=3, max_length=50)
-    email: str | None = Field(None, pattern=r"^\S+@\S+\.\S+$")
+    email: str | None = Field(None, pattern=r'^\S+@\S+\.\S+$')
     password: str = Field(..., min_length=6)
     role: str = "user"
 
 
 class UserPasswordChange(BaseModel):
-    """Schema for changing password"""
-
+    """Schema for changing password."""
     current_password: str
     new_password: str = Field(..., min_length=6)
 
 
 class UserOut(BaseModel):
-    """Schema for user response"""
-
+    """Schema for user response."""
     id: int
     username: str
     email: str | None = None
@@ -38,14 +34,13 @@ class UserOut(BaseModel):
 
 
 class Token(BaseModel):
-    """Schema for JWT token response"""
-
+    """Schema for JWT token response."""
     access_token: str
     token_type: str
 
 
 class PasswordResetRequest(BaseModel):
-    email: str = Field(..., pattern=r"^\S+@\S+\.\S+$")
+    email: str = Field(..., pattern=r'^\S+@\S+\.\S+$')
 
 
 class PasswordResetConfirm(BaseModel):
@@ -54,24 +49,21 @@ class PasswordResetConfirm(BaseModel):
 
 
 class FleetRecordBase(BaseModel):
-    """Base schema for fleet record"""
-
+    """Base schema for fleet record."""
     date: date
     fleet: str = Field(..., min_length=1)
     amount: float = Field(..., ge=0)
 
 
 class FleetRecordOut(FleetRecordBase):
-    """Schema for fleet record response"""
-
+    """Schema for fleet record response."""
     id: int
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class FleetSummary(BaseModel):
-    """Schema for fleet summary items"""
-
+    """Schema for fleet summary items."""
     fleet: str
     total_amount: float
     record_count: int
@@ -79,8 +71,7 @@ class FleetSummary(BaseModel):
 
 
 class DailySubtotal(BaseModel):
-    """Schema for daily fleet performance"""
-
+    """Schema for daily fleet performance."""
     date: date
     fleet: str
     daily_total: float
@@ -88,27 +79,24 @@ class DailySubtotal(BaseModel):
 
 
 class DashboardStats(BaseModel):
-    """Schema for KPI cards"""
-
+    """Schema for KPI cards."""
     total_revenue: float
     total_records: int
     top_performing_fleet: str
     average_trip_revenue: float
     predicted_revenue: float | None = 0.0
-    revenue_trend_percent: float | None = 0.0  # Percentage change WoW
+    revenue_trend_percent: float | None = 0.0
 
 
 class FilterOptions(BaseModel):
-    """Schema for available filter options"""
-
+    """Schema for available filter options."""
     fleets: list[str]
     min_date: date | None
     max_date: date | None
 
 
 class Anomaly(BaseModel):
-    """Schema for data anomalies"""
-
+    """Schema for data anomalies."""
     date: date
     fleet: str
     amount: float
@@ -117,8 +105,7 @@ class Anomaly(BaseModel):
 
 
 class AnalyticsResponse(BaseModel):
-    """Comprehensive analytics response"""
-
+    """Comprehensive analytics response."""
     records: list[FleetRecordOut]
     fleet_summaries: list[FleetSummary]
     daily_subtotals: list[DailySubtotal]
@@ -139,8 +126,7 @@ class ChartResponse(BaseModel):
 
 
 class AuditLogOut(BaseModel):
-    """Schema for audit log response"""
-
+    """Schema for audit log response."""
     id: int
     user_id: int | None
     username: str | None
@@ -152,10 +138,9 @@ class AuditLogOut(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    """Schema for updating user role/details"""
-
+    """Schema for updating user role/details."""
     username: str | None = Field(None, min_length=3, max_length=50)
-    email: str | None = Field(None, pattern=r"^\S+@\S+\.\S+$")
+    email: str | None = Field(None, pattern=r'^\S+@\S+\.\S+$')
     role: str | None = None
     account_id: str | None = None
 
@@ -172,8 +157,7 @@ class SystemSettingOut(SystemSettingBase):
 
 
 class NotificationOut(BaseModel):
-    """Schema for notification response"""
-
+    """Schema for notification response."""
     id: int
     user_id: int | None
     title: str
